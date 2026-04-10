@@ -8,33 +8,36 @@ function mudarAba(aba) {
     botoes[1].classList.toggle('active', aba === 'estudos');
 }
 
-// Carregar Tarefas do Backend
-async function carregarTarefas() {
-    const resposta = await fetch('/api/dados');
-    const dados = await resposta.json();
-    renderizarTarefas(dados.tarefas);
+// --- LÓGICA DE DADOS (LOCAL STORAGE) ---
+function obterTarefas() {
+    const tarefasSalvas = localStorage.getItem('minhas_tarefas');
+    return tarefasSalvas ? JSON.parse(tarefasSalvas) : [];
+}
+
+function salvarTarefas(tarefas) {
+    localStorage.setItem('minhas_tarefas', JSON.stringify(tarefas));
 }
 
 // Lógica de Cores baseada na Data
 function calcularUrgencia(dataEntrega) {
     const hoje = new Date();
     hoje.setHours(0,0,0,0);
-    const entrega = new Date(dataEntrega + 'T00:00:00'); // Fuso horário fixo
+    const entrega = new Date(dataEntrega + 'T00:00:00');
     
     const diferencaTempo = entrega.getTime() - hoje.getTime();
     const diasRestantes = Math.ceil(diferencaTempo / (1000 * 3600 * 24));
 
     if (diasRestantes <= 2) return { classe: 'urgencia-vermelha', texto: `${diasRestantes} dias (Urgente)` };
-    if (diasRestantes === 3) return { classe: 'urgencia-amarela', texto: `3 dias (Atenção)` }; // Ajuste fino pra separar o amarelo
+    if (diasRestantes === 3) return { classe: 'urgencia-amarela', texto: `3 dias (Atenção)` };
     if (diasRestantes >= 4 && diasRestantes <= 6) return { classe: 'urgencia-verde', texto: `${diasRestantes} dias` };
-    return { classe: 'urgencia-azul', texto: `${diasRestantes} dias` }; // Mais de 6
+    return { classe: 'urgencia-azul', texto: `${diasRestantes} dias` };
 }
 
-function renderizarTarefas(tarefas) {
+function renderizarTarefas() {
+    const tarefas = obterTarefas();
     const lista = document.getElementById('lista-tarefas');
-    lista.innerHTML = ''; // Limpa a lista antes de desenhar
+    lista.innerHTML = ''; 
 
-    // Ordenar para as mais urgentes (menor data) ficarem no topo
     tarefas.sort((a, b) => new Date(a.data) - new Date(b.data));
 
     tarefas.forEach(tarefa => {
@@ -54,8 +57,7 @@ function renderizarTarefas(tarefas) {
     });
 }
 
-// Adicionar Nova Tarefa
-async function adicionarTarefa() {
+function adicionarTarefa() {
     const titulo = document.getElementById('titulo-tarefa').value;
     const data = document.getElementById('data-tarefa').value;
 
@@ -64,33 +66,27 @@ async function adicionarTarefa() {
         return;
     }
 
+    const tarefas = obterTarefas();
     const novaTarefa = {
-        id: Date.now(), // Gera um ID único baseado na hora
+        id: Date.now(),
         titulo: titulo,
         data: data
     };
 
-    await fetch('/api/tarefas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(novaTarefa)
-    });
+    tarefas.push(novaTarefa);
+    salvarTarefas(tarefas);
 
-    // Limpa os campos e recarrega a lista
     document.getElementById('titulo-tarefa').value = '';
     document.getElementById('data-tarefa').value = '';
-    carregarTarefas();
+    renderizarTarefas();
 }
 
-// Excluir Tarefa
-async function excluirTarefa(id) {
-    await fetch('/api/excluir_tarefa', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id })
-    });
-    carregarTarefas();
+function excluirTarefa(id) {
+    let tarefas = obterTarefas();
+    tarefas = tarefas.filter(t => t.id !== id);
+    salvarTarefas(tarefas);
+    renderizarTarefas();
 }
 
-// Inicia carregando as tarefas ao abrir a página
-window.onload = carregarTarefas;
+// Inicia carregando as tarefas
+window.onload = renderizarTarefas;
