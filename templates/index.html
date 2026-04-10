@@ -4,7 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OrganizaJá</title>
-    <link rel="stylesheet" href="style.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #121212; color: #ffffff; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 20px; font-weight: 400; }
+        .tabs { display: flex; margin-bottom: 20px; background: #1e1e1e; border-radius: 8px; overflow: hidden; }
+        .tab-btn { flex: 1; padding: 15px; background: none; border: none; color: #888; cursor: pointer; font-size: 16px; transition: 0.3s; }
+        .tab-btn.active { background: #2c2c2c; color: #fff; border-bottom: 3px solid #3b82f6; }
+        .formulario { display: flex; gap: 10px; margin-bottom: 30px; }
+        .formulario input, .formulario select { padding: 12px; background: #1e1e1e; border: 1px solid #333; color: white; border-radius: 6px; outline: none; }
+        .formulario input[type="text"] { flex: 1; }
+        .formulario button { padding: 12px 20px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; }
+        .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .card { padding: 20px; border-radius: 8px; border: 1px solid #333; position: relative; background: #1e1e1e; }
+        .card h3 { margin-bottom: 10px; font-size: 18px; }
+        .card p { font-size: 14px; opacity: 0.8; }
+        .card-actions { margin-top: 15px; display: flex; justify-content: flex-end; gap: 10px; }
+        .card-actions button { background: transparent; border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+        .urgencia-vermelha { background-color: #4a1919; border-color: #ff4444; }
+        .urgencia-amarela { background-color: #4a3e19; border-color: #ffbb33; }
+        .urgencia-verde   { background-color: #194a24; border-color: #00C851; }
+        .urgencia-azul    { background-color: #19334a; border-color: #33b5e5; }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -21,8 +43,7 @@
                 <input type="date" id="data-tarefa">
                 <button onclick="adicionarTarefa()">Adicionar</button>
             </div>
-            <div id="lista-tarefas" class="grid-cards">
-                </div>
+            <div id="lista-tarefas" class="grid-cards"></div>
         </div>
 
         <div id="aba-estudos" class="aba-conteudo" style="display: none;">
@@ -47,6 +68,82 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+        function mudarAba(aba) {
+            document.getElementById('aba-tarefas').style.display = aba === 'tarefas' ? 'block' : 'none';
+            document.getElementById('aba-estudos').style.display = aba === 'estudos' ? 'block' : 'none';
+            let botoes = document.querySelectorAll('.tab-btn');
+            botoes[0].classList.toggle('active', aba === 'tarefas');
+            botoes[1].classList.toggle('active', aba === 'estudos');
+        }
+
+        function obterTarefas() {
+            const tarefasSalvas = localStorage.getItem('minhas_tarefas');
+            return tarefasSalvas ? JSON.parse(tarefasSalvas) : [];
+        }
+
+        function salvarTarefas(tarefas) {
+            localStorage.setItem('minhas_tarefas', JSON.stringify(tarefas));
+        }
+
+        function calcularUrgencia(dataEntrega) {
+            const hoje = new Date();
+            hoje.setHours(0,0,0,0);
+            const entrega = new Date(dataEntrega + 'T00:00:00');
+            const diferencaTempo = entrega.getTime() - hoje.getTime();
+            const diasRestantes = Math.ceil(diferencaTempo / (1000 * 3600 * 24));
+
+            if (diasRestantes <= 2) return { classe: 'urgencia-vermelha', texto: `${diasRestantes} dias (Urgente)` };
+            if (diasRestantes === 3) return { classe: 'urgencia-amarela', texto: `3 dias (Atenção)` };
+            if (diasRestantes >= 4 && diasRestantes <= 6) return { classe: 'urgencia-verde', texto: `${diasRestantes} dias` };
+            return { classe: 'urgencia-azul', texto: `${diasRestantes} dias` };
+        }
+
+        function renderizarTarefas() {
+            const tarefas = obterTarefas();
+            const lista = document.getElementById('lista-tarefas');
+            lista.innerHTML = ''; 
+
+            tarefas.sort((a, b) => new Date(a.data) - new Date(b.data));
+
+            tarefas.forEach(tarefa => {
+                const urgencia = calcularUrgencia(tarefa.data);
+                const card = document.createElement('div');
+                card.className = `card ${urgencia.classe}`;
+                card.innerHTML = `
+                    <h3>${tarefa.titulo}</h3>
+                    <p>Vence em: ${urgencia.texto} - (${tarefa.data})</p>
+                    <div class="card-actions">
+                        <button onclick="excluirTarefa(${tarefa.id})">Concluído / Excluir</button>
+                    </div>
+                `;
+                lista.appendChild(card);
+            });
+        }
+
+        function adicionarTarefa() {
+            const titulo = document.getElementById('titulo-tarefa').value;
+            const data = document.getElementById('data-tarefa').value;
+
+            if (!titulo || !data) { alert("Preencha título e data!"); return; }
+
+            const tarefas = obterTarefas();
+            tarefas.push({ id: Date.now(), titulo: titulo, data: data });
+            salvarTarefas(tarefas);
+
+            document.getElementById('titulo-tarefa').value = '';
+            document.getElementById('data-tarefa').value = '';
+            renderizarTarefas();
+        }
+
+        function excluirTarefa(id) {
+            let tarefas = obterTarefas();
+            tarefas = tarefas.filter(t => t.id !== id);
+            salvarTarefas(tarefas);
+            renderizarTarefas();
+        }
+
+        window.onload = renderizarTarefas;
+    </script>
 </body>
 </html>
