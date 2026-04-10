@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrganizaJá</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>OrganizaJá</h1>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="mudarAba('tarefas')">Tarefas</button>
+            <button class="tab-btn" onclick="mudarAba('estudos')">Planos de Estudos</button>
+        </div>
+
+        <div id="aba-tarefas" class="aba-conteudo active">
+            <div class="formulario">
+                <input type="text" id="titulo-tarefa" placeholder="Título da Tarefa">
+                <input type="date" id="data-tarefa">
+                <button onclick="adicionarTarefa()">Adicionar</button>
+            </div>
+            <div id="lista-tarefas" class="grid-cards">
+                </div>
+        </div>
+
+        <div id="aba-estudos" class="aba-conteudo" style="display: none;">
+            <div class="formulario">
+                <input type="text" id="titulo-estudo" placeholder="O que você quer estudar?">
+                <select id="status-estudo">
+                    <option value="agora">Estudando Agora</option>
+                    <option value="proximos">Próximos Tópicos</option>
+                </select>
+                <button>Adicionar</button> </div>
+            <div class="colunas-estudo">
+                <div class="coluna">
+                    <h3>Estudando Agora</h3>
+                    <div id="lista-estudos-agora"></div>
+                </div>
+                <div class="coluna">
+                    <h3>Próximos</h3>
+                    <div id="lista-estudos-proximos"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
