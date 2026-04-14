@@ -8,7 +8,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #121212; color: #ffffff; padding: 20px; }
         .container { max-width: 900px; margin: 0 auto; }
-        h1 { text-align: center; margin-bottom: 20px; font-weight: 400; }
+        .cabecalho { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { font-weight: 400; }
+        .btn-sair { background: transparent; border: 1px solid #ff4444; color: #ff4444; padding: 5px 15px; border-radius: 4px; text-decoration: none; }
         .tabs { display: flex; margin-bottom: 20px; background: #1e1e1e; border-radius: 8px; overflow: hidden; }
         .tab-btn { flex: 1; padding: 15px; background: none; border: none; color: #888; cursor: pointer; font-size: 16px; transition: 0.3s; }
         .tab-btn.active { background: #2c2c2c; color: #fff; border-bottom: 3px solid #3b82f6; }
@@ -30,7 +32,10 @@
 </head>
 <body>
     <div class="container">
-        <h1>OrganizaJá</h1>
+        <div class="cabecalho">
+            <h1>OrganizaJá</h1>
+            <a href="/sair" class="btn-sair">Sair</a>
+        </div>
         
         <div class="tabs">
             <button class="tab-btn active" onclick="mudarAba('tarefas')">Tarefas</button>
@@ -55,16 +60,6 @@
                 </select>
                 <button>Adicionar</button>
             </div>
-            <div class="colunas-estudo">
-                <div class="coluna">
-                    <h3>Estudando Agora</h3>
-                    <div id="lista-estudos-agora"></div>
-                </div>
-                <div class="coluna">
-                    <h3>Próximos</h3>
-                    <div id="lista-estudos-proximos"></div>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -77,13 +72,10 @@
             botoes[1].classList.toggle('active', aba === 'estudos');
         }
 
-        function obterTarefas() {
-            const tarefasSalvas = localStorage.getItem('minhas_tarefas');
-            return tarefasSalvas ? JSON.parse(tarefasSalvas) : [];
-        }
-
-        function salvarTarefas(tarefas) {
-            localStorage.setItem('minhas_tarefas', JSON.stringify(tarefas));
+        async function carregarTarefas() {
+            const resposta = await fetch('/api/dados');
+            const dados = await resposta.json();
+            renderizarTarefas(dados.tarefas);
         }
 
         function calcularUrgencia(dataEntrega) {
@@ -99,11 +91,9 @@
             return { classe: 'urgencia-azul', texto: `${diasRestantes} dias` };
         }
 
-        function renderizarTarefas() {
-            const tarefas = obterTarefas();
+        function renderizarTarefas(tarefas) {
             const lista = document.getElementById('lista-tarefas');
             lista.innerHTML = ''; 
-
             tarefas.sort((a, b) => new Date(a.data) - new Date(b.data));
 
             tarefas.forEach(tarefa => {
@@ -121,29 +111,35 @@
             });
         }
 
-        function adicionarTarefa() {
+        async function adicionarTarefa() {
             const titulo = document.getElementById('titulo-tarefa').value;
             const data = document.getElementById('data-tarefa').value;
 
             if (!titulo || !data) { alert("Preencha título e data!"); return; }
 
-            const tarefas = obterTarefas();
-            tarefas.push({ id: Date.now(), titulo: titulo, data: data });
-            salvarTarefas(tarefas);
+            const novaTarefa = { id: Date.now(), titulo: titulo, data: data };
+
+            await fetch('/api/tarefas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(novaTarefa)
+            });
 
             document.getElementById('titulo-tarefa').value = '';
             document.getElementById('data-tarefa').value = '';
-            renderizarTarefas();
+            carregarTarefas();
         }
 
-        function excluirTarefa(id) {
-            let tarefas = obterTarefas();
-            tarefas = tarefas.filter(t => t.id !== id);
-            salvarTarefas(tarefas);
-            renderizarTarefas();
+        async function excluirTarefa(id) {
+            await fetch('/api/excluir_tarefa', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            carregarTarefas();
         }
 
-        window.onload = renderizarTarefas;
+        window.onload = carregarTarefas;
     </script>
 </body>
 </html>
